@@ -27,10 +27,18 @@ jobs:
           ls -la dt/prebuilt
 
       - name: Bebaskan ruang disk
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
-          sudo docker image prune --all --force || true
-          df -h /
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Cek disk setelah dibebaskan
+        run: df -h /
 
       - name: Install dependensi build
         run: |
@@ -58,6 +66,11 @@ jobs:
           repo sync -c -j"$(nproc)" --force-sync --no-clone-bundle --no-tags
           df -h /
 
+      - name: Hapus .repo (hemat disk)
+        run: |
+          rm -rf ~/pbrp/.repo
+          df -h /
+
       - name: Pasang device tree
         run: |
           mkdir -p ~/pbrp/device/xiaomi/moon
@@ -70,6 +83,7 @@ jobs:
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch pb_moon-eng
           mka ${{ inputs.build_target }} -j"$(nproc)"
+          df -h /
 
       - name: Kumpulkan hasil
         if: always()
