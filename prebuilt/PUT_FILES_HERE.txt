@@ -1,0 +1,4 @@
+Salin dari hasil bootinfo.py:
+  hasil_boot/kernel.bin    -> prebuilt/kernel      (gzip, 6.6.89 GKI)
+  hasil_vb/dtb_raw.bin     -> prebuilt/dtb.img     (pakai dtb_raw, BUKAN dtb.bin: header MTK 64 byte dipertahankan seperti stock)
+  dtbo.img (stock 8MB)     -> prebuilt/dtbo.img    (opsional)

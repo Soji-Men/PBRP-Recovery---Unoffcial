@@ -1,0 +1,88 @@
+name: Build PBRP (Redmi 13 / moon)
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_branch:
+        description: "Branch manifest PBRP"
+        default: "android-14.0"
+      build_target:
+        description: "Target make (README PBRP: pbrp; alternatif untuk vendor_boot: vendorbootimage)"
+        default: "pbrp"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - name: Checkout device tree
+        uses: actions/checkout@v4
+        with:
+          path: dt
+
+      - name: Cek file prebuilt
+        run: |
+          test -s dt/prebuilt/kernel  || { echo "::error::prebuilt/kernel belum ada (salin dari kernel.bin)"; exit 1; }
+          test -s dt/prebuilt/dtb.img || { echo "::error::prebuilt/dtb.img belum ada (salin dari dtb_raw.bin)"; exit 1; }
+          ls -la dt/prebuilt
+
+      - name: Bebaskan ruang disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force || true
+          df -h /
+
+      - name: Install dependensi build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev \
+            libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev \
+            libxml2-utils xsltproc unzip fontconfig python3 python-is-python3 rsync bc cpio lz4
+          mkdir -p ~/bin
+          curl -sSf https://storage.googleapis.com/git-repo-downloads/repo -o ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          git config --global user.name "ci"
+          git config --global user.email "ci@users.noreply.github.com"
+
+      - name: Tambah swap 8GB
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+          free -h
+
+      - name: Sync source PBRP
+        run: |
+          mkdir -p ~/pbrp && cd ~/pbrp
+          repo init -u https://github.com/PitchBlackRecoveryProject/manifest_pb -b "${{ inputs.manifest_branch }}" --depth=1
+          repo sync -c -j"$(nproc)" --force-sync --no-clone-bundle --no-tags
+          df -h /
+
+      - name: Pasang device tree
+        run: |
+          mkdir -p ~/pbrp/device/xiaomi/moon
+          rsync -a --exclude '.git' --exclude '.github' "$GITHUB_WORKSPACE/dt/" ~/pbrp/device/xiaomi/moon/
+
+      - name: Build
+        run: |
+          cd ~/pbrp
+          source build/envsetup.sh
+          export ALLOW_MISSING_DEPENDENCIES=true
+          lunch pb_moon-eng
+          mka ${{ inputs.build_target }} -j"$(nproc)"
+
+      - name: Kumpulkan hasil
+        if: always()
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/out_files"
+          cp -v ~/pbrp/out/target/product/moon/*.img "$GITHUB_WORKSPACE/out_files/" 2>/dev/null || true
+          cp -v ~/pbrp/out/target/product/moon/*.zip "$GITHUB_WORKSPACE/out_files/" 2>/dev/null || true
+          ls -la "$GITHUB_WORKSPACE/out_files"
+
+      - name: Upload hasil
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbrp-moon
+          path: out_files/
+          if-no-files-found: warn
