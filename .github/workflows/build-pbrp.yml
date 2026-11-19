@@ -53,10 +53,10 @@ jobs:
           git config --global user.name "ci"
           git config --global user.email "ci@users.noreply.github.com"
 
-      - name: Tambah swap 8GB
+      - name: Tambah swap 16GB
         run: |
           sudo swapoff -a || true
-          sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+          sudo fallocate -l 16G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
           free -h
 
       - name: Sync source PBRP
@@ -82,7 +82,8 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch pb_moon-eng
-          mka ${{ inputs.build_target }} -j"$(nproc)"
+          # Dibatasi -j4 untuk mencegah runner kehabisan RAM (OOM) dan lost connection
+          mka ${{ inputs.build_target }} -j4
           df -h /
 
       - name: Kumpulkan hasil
