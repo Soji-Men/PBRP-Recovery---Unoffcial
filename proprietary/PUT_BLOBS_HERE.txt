@@ -1,0 +1,14 @@
+Hasil `python3 elfdeps.py --copy /sdcard/beanpod_out` salin ke sini:
+  cp -r /sdcard/beanpod_out/vendor proprietary/
+  rm -rf proprietary/vendor/etc      # rc vendor jangan ikut (service sudah didefinisikan di init.recovery.mt6768.rc)
+  chmod 755 proprietary/vendor/bin/hw/*
+  chmod 644 proprietary/vendor/lib64/*.so
+Lalu commit + push (git menyimpan bit executable).
+
+== TEE Microtrust (tambahan) ==
+vendor/bin/teei_daemon, vendor/bin/mtk_storageproxyd  (+ library hasil elfdeps.py)
+vendor/lib64/hw/kmsetkey.beanpod.so, vendor/lib64/hw/id_attestation.beanpod.so  (di-dlopen, tidak muncul di NEEDED)
+vendor/thh/ta/*.ta  (Trusted Application; lewati file sangat besar yang bukan keymaster/gatekeeper)
+Jangan sertakan vendor/etc/init/*.rc
+
+Suspend service TIDAK perlu disalin: diganti stub libhardware_legacy_moonstub (hwlegacy_stub/).

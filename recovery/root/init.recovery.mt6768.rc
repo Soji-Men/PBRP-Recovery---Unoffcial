@@ -35,6 +35,65 @@ service gatekeeper-beanpod /vendor/bin/hw/android.hardware.gatekeeper-service.be
     disabled
     seclabel u:r:recovery:s0
 
+# Boot control HAL AIDL milik vendor MTK (IBootControl/default)
+service vendor.boot-default /vendor/bin/hw/android.hardware.boot-service.mtk
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+# --- TEE Microtrust (teei): harus jalan SEBELUM keymaster/gatekeeper beanpod ---
+# Argumen -r/-t disalin persis dari /vendor/etc/init/microtrust.rc stock.
+service teei-daemon /vendor/bin/teei_daemon \
+    -r 020b0000000000000000000000000000 \
+    -r 020f0000000000000000000000000000 \
+    -r 06090000000000000000000000000000 \
+    -r 05120000000000000000000000000000 \
+    -r 40188311faf343488db888ad39496f9a \
+    -r 07060000000000000000000000007169 \
+    -r 9073f03a9618383bb1856eb3f990babd \
+    -r 08050000000000000000000000003419 \
+    -r 5020170115e016302017012521300000 \
+    -r 0f5eed3c3b5a47afacca69a84bf0efad \
+    -r 07407000000000000000000000000000 \
+    -r 05160000000000000000000000000000 \
+    -r 91dba524a6e24909acc48abd7163121a \
+    -t 08030000000000000000000000000000 \
+    -t 85f630e0f0964c5fa2cc268ce04e3da3 \
+    -t 98fb95bcb4bf42d26473eae48690d7ea \
+    -t 7b66512021214487ba710a51d7ea78fe \
+    -t 09010000000000000000000000000000
+    user root
+    group root system
+    setenv LD_LIBRARY_PATH /system/lib64/moonstub:/vendor/lib64:/system/lib64
+    capabilities SYS_RAWIO
+    disabled
+    seclabel u:r:recovery:s0
+
+service mtk-storageproxyd /vendor/bin/mtk_storageproxyd -d /dev/trusty-ipc-dev1 \
+    -g /dev/trusty-ipc-dev0 -p /data/vendor/trusty -r /dev/0\:0\:0\:49476
+    user root
+    group root system
+    setenv LD_LIBRARY_PATH /system/lib64/moonstub:/vendor/lib64:/system/lib64
+    capabilities DAC_READ_SEARCH SYS_RAWIO
+    disabled
+    seclabel u:r:recovery:s0
+
 on boot
+    # izin node TEE (sama seperti microtrust.rc stock)
+    chmod 0660 /dev/teei_client
+    chmod 0660 /dev/teei_config
+    chmod 0666 /dev/isee_tee0
+    chmod 0660 /dev/tz_vfs
+    chmod 0660 /dev/rpmb0
+    chmod 0660 /dev/0:0:0:49476
+    mkdir /data/vendor 0771 root root
+    mkdir /data/vendor/trusty 0776 root root
+    mkdir /data/vendor/thh 0755 root root
+    mkdir /data/vendor/thh/ta 0755 root root
+    start teei-daemon
+    wait /dev/teei_client 5
+    start mtk-storageproxyd
+    start vendor.boot-default
     start keymaster-4-1-beanpod
     start gatekeeper-beanpod

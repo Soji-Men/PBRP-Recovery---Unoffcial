@@ -13,19 +13,13 @@ AB_OTA_POSTINSTALL_CONFIG += \
     FILESYSTEM_TYPE_system=ext4 \
     POSTINSTALL_OPTIONAL_system=true
 
-# Boot control HAL
-PRODUCT_PACKAGES += \
-    android.hardware.boot@1.0-impl \
-    android.hardware.boot@1.0-service
+# Boot control HAL: vendor memakai AIDL android.hardware.boot-service.mtk.
+# Biner & library-nya disalin dari stock lewat proprietary/ (lihat elfdeps.py), bukan dibangun dari source.
+# (PRODUCT_STATIC_BOOT_CONTROL_HAL sudah dihapus di AOSP baru.)
 
-PRODUCT_PACKAGES += \
-    bootctrl.mt6768
-
-PRODUCT_STATIC_BOOT_CONTROL_HAL := \
-    bootctrl.mt6768 \
-    libgptutils \
-    libz \
-    libcutils
+# stub libhardware_legacy untuk recovery (tanpa service suspend)
+PRODUCT_SOONG_NAMESPACES += $(LOCAL_PATH)
+PRODUCT_PACKAGES += libhardware_legacy_moonstub.recovery
 
 PRODUCT_PACKAGES += \
     otapreopt_script \

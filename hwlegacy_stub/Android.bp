@@ -1,0 +1,8 @@
+cc_library_shared {
+    name: "libhardware_legacy_moonstub",
+    stem: "libhardware_legacy",
+    srcs: ["stub.c"],
+    recovery_available: true,
+    relative_install_path: "moonstub",
+    cflags: ["-Wall", "-Werror"],
+}
